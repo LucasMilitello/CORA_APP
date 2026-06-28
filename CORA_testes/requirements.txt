@@ -1,0 +1,10 @@
+numpy
+opencv-python
+matplotlib
+tifffile
+scipy
+scikit-learn
+threadpoolctl
+psutil
+PySide6==6.8.0.2
+pywinauto

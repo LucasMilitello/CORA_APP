@@ -1,0 +1,81 @@
+INSTRUCOES PARA ENVIAR O PROJETO AO GITHUB
+
+Arquivo ZIP gerado para upload:
+- CORA_GitHub_upload.zip
+
+Arquivos principais incluidos:
+- cora_projeto/
+- requirements.txt
+- build_exe.ps1
+- launch-qt.ps1
+- CORA.spec
+- .gitignore
+- INSTRUCOES_UPLOAD_GITHUB.txt
+
+Nao envie para o GitHub:
+- .venv/
+- __pycache__/
+- build/
+- dist/
+- .cora_tmp/
+- _cora_resultados/
+- arquivos .zip gerados localmente
+
+OPCAO 1: upload pelo site do GitHub
+
+1. Acesse https://github.com e entre na sua conta.
+2. Clique em New repository.
+3. Defina um nome para o repositorio, por exemplo: CORA.
+4. Escolha Public ou Private.
+5. Crie o repositorio.
+6. Extraia o arquivo CORA_GitHub_upload.zip em uma pasta local.
+7. No GitHub, clique em uploading an existing file ou Add file > Upload files.
+8. Arraste os arquivos e pastas extraidos para a pagina.
+9. Confirme que a pasta .venv nao foi enviada.
+10. Escreva uma mensagem de commit, por exemplo: "Primeiro upload do CORA".
+11. Clique em Commit changes.
+
+OPCAO 2: envio usando Git pelo terminal
+
+1. Extraia o arquivo CORA_GitHub_upload.zip em uma pasta local.
+2. Abra o PowerShell dentro dessa pasta.
+3. Rode:
+
+   git init
+   git add .
+   git commit -m "Primeiro upload do CORA"
+
+4. Crie um repositorio vazio no GitHub.
+5. Copie a URL do repositorio. Exemplo:
+
+   https://github.com/SEU_USUARIO/CORA.git
+
+6. Rode:
+
+   git branch -M main
+   git remote add origin https://github.com/SEU_USUARIO/CORA.git
+   git push -u origin main
+
+COMO TESTAR DEPOIS DE BAIXAR DO GITHUB
+
+1. Clone ou baixe o repositorio.
+2. Abra o PowerShell na pasta do projeto.
+3. Crie o ambiente virtual:
+
+   python -m venv .venv
+
+4. Ative o ambiente:
+
+   .\.venv\Scripts\Activate.ps1
+
+5. Instale as dependencias:
+
+   python -m pip install --upgrade pip
+   python -m pip install -r requirements.txt
+
+6. Execute a interface principal:
+
+   python -m cora_projeto.run_cora_gui
+
+Observacao:
+- A pasta de resultados so deve ser criada automaticamente quando nenhuma pasta de saida for selecionada no app.

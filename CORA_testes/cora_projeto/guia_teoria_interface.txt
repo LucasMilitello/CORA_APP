@@ -1,0 +1,415 @@
+GUIA TEORICO DA INTERFACE - CORA_PROJETO
+Versao: 2026-05-29
+
+OBJETIVO
+Este guia mapeia a teoria usada na interface atual do programa e organiza o material necessario
+para embasar um artigo tecnico focado em UI/UX, fluxo operacional e funcionalidades.
+Para cada bloco teorico, ha:
+1) O que estudar (conceito)
+2) Livros recomendados
+3) Onde isso aparece no codigo (arquivo + linhas)
+
+ESCOPO DA INTERFACE (VERSAO ATUAL)
+Arquivos centrais da interface:
+- codigo_atual/cora_projeto/run_cora_gui.py
+- codigo_atual/cora_projeto/cora_interface.py
+- codigo_atual/cora_projeto/pages/main_page.py
+- codigo_atual/cora_projeto/pages/roi_page.py
+
+Arquivos de servico que a interface orquestra:
+- codigo_atual/cora_projeto/services/grouping_service.py
+- codigo_atual/cora_projeto/services/processing_service.py
+- codigo_atual/cora_projeto/services/export_service.py
+
+====================================================================
+SECAO 1 - ARQUITETURA GERAL DA GUI (CONTROLLER + PAGINAS + SERVICOS)
+====================================================================
+TEORIA
+- Arquitetura orientada a controlador: uma classe central orquestra estado, eventos e transicoes.
+- Separacao por modulos: layout em pages/*, regras de agrupamento/processamento/exportacao em services/*.
+- Interface human-in-the-loop: automacao + revisao humana antes de consolidar resultado final.
+
+LIVROS
+1) Clean Architecture - Robert C. Martin
+2) Architecture Patterns with Python - Harry Percival e Bob Gregory
+3) Patterns of Enterprise Application Architecture - Martin Fowler
+
+CODIGO
+- cora_interface.py:313 (classe controladora CORAApp)
+- cora_interface.py:1480 (_build_layout delegando para pagina)
+- pages/main_page.py:10 (montagem do layout principal)
+- cora_interface.py:2508 (_scan_folder coordenando descoberta + revisao)
+- cora_interface.py:3043 (_start_processing_job para processamento em lote)
+- cora_interface.py:3752 (_save_results_to_disk para consolidacao final)
+
+====================================================================
+SECAO 2 - BOOTSTRAP, ENTRYPOINT E EXECUCAO COMO MODULO
+====================================================================
+TEORIA
+- Entry point robusto para execucao direta e execucao como pacote.
+- Resolucao dinamica de import path para cenarios locais e empacotados.
+
+LIVROS
+1) Effective Python (2nd ed.) - Brett Slatkin
+2) Python Distilled - David M. Beazley
+
+CODIGO
+- run_cora_gui.py:7 (_resolve_main)
+- run_cora_gui.py:25 (execucao de main)
+- cora_interface.py:5068 (parse_args)
+- cora_interface.py:5081 (main)
+- cora_interface.py:5060 (run/mainloop)
+
+====================================================================
+SECAO 3 - PROGRAMACAO ORIENTADA A EVENTOS (EVENT-DRIVEN UI)
+====================================================================
+TEORIA
+- Main loop reativo: callbacks de botoes, combos, checkboxes, teclado e mouse.
+- Estado observado via StringVar/DoubleVar/BooleanVar.
+- Regras de habilitacao de controles para guiar o fluxo e evitar uso invalido.
+
+LIVROS
+1) Python GUI Programming with Tkinter - Alan D. Moore
+2) Modern Tkinter for Busy Python Developers - Mark Roseman
+3) Tkinter 8.5 Reference - John W. Shipman
+
+CODIGO
+- cora_interface.py:316 (__init__ com estado reativo da UI)
+- cora_interface.py:1523 (_set_ui_busy)
+- pages/main_page.py:103 (bind de selecao de grupo)
+- pages/main_page.py:120 e 128 (checkbuttons com callback)
+- cora_interface.py:1780 (_on_folder_var_changed via trace)
+
+====================================================================
+SECAO 4 - DESIGN DE LAYOUT COM TKINTER/TTK
+====================================================================
+TEORIA
+- Estrutura por telas: configuracao inicial e visualizacao operacional.
+- Composicao por Frame, Panedwindow e Notebook.
+- Layout orientado a produtividade: painel de resultados + painel de imagem.
+
+LIVROS
+1) Tkinter GUI Application Development Blueprints - Bhaskar Chaudhary
+2) Python GUI Programming Cookbook - Burkhard A. Meier
+
+CODIGO
+- pages/main_page.py:10 (layout completo)
+- pages/main_page.py:17 (tela de configuracoes)
+- pages/main_page.py:68 (tela de visualizacao)
+- pages/main_page.py:193 (split horizontal Panedwindow)
+- pages/main_page.py:206 (Notebook lateral de resultados)
+- cora_interface.py:1483 (_show_config_page)
+- cora_interface.py:1494 (_show_viewer_page)
+- cora_interface.py:2699 (_toggle_results_panel)
+
+====================================================================
+SECAO 5 - PERSISTENCIA DE PREFERENCIAS E REPRODUTIBILIDADE DE UI
+====================================================================
+TEORIA
+- Persistencia local em JSON para preferencias de uso.
+- Normalizacao defensiva de configuracoes de visualizacao e cores.
+- Reprodutibilidade entre sessoes para reduzir variacao operacional.
+
+LIVROS
+1) Fluent Python (2nd ed.) - Luciano Ramalho
+2) Python Cookbook (3rd ed.) - David Beazley e Brian K. Jones
+
+CODIGO
+- cora_interface.py:528 (_resolve_settings_path)
+- cora_interface.py:536 (_load_user_settings)
+- cora_interface.py:575 (_save_user_settings)
+- cora_interface.py:602 (_normalize_roi_editor_profile_key)
+- cora_interface.py:630 (_normalize_preview_mode_key)
+- cora_interface.py:644 (_normalize_preview_source_mode_key)
+- cora_interface.py:658 (_normalize_preview_color_mode_key)
+- cora_interface.py:672 (_normalize_rgb_triplet)
+
+====================================================================
+SECAO 6 - UX OPERACIONAL: STATUS, PROGRESSO, ETA E CANCELAMENTO
+====================================================================
+TEORIA
+- Feedback continuo reduz incerteza em tarefas longas de processamento.
+- Controle de cancelamento melhora seguranca operacional.
+- Log incremental de progresso melhora auditabilidade da sessao.
+
+LIVROS
+1) Designing Interfaces - Jenifer Tidwell, Charles Brewer, Aynne Valencia
+2) About Face - Alan Cooper et al.
+3) Measuring the User Experience - Tullis e Albert
+
+CODIGO
+- cora_interface.py:1579 (_update_inline_progress_visibility)
+- cora_interface.py:1605 (_open_progress_popup)
+- cora_interface.py:1691 (_append_progress_log)
+- cora_interface.py:1714 (_format_eta)
+- cora_interface.py:1726 (_request_cancel_processing)
+- cora_interface.py:1738 (_set_progress_feedback)
+- pages/main_page.py:216 (bloco de progresso inline)
+
+====================================================================
+SECAO 7 - CONCORRENCIA EM DESKTOP (THREAD + QUEUE + POLLING)
+====================================================================
+TEORIA
+- Responsividade de GUI depende de mover processamento pesado para thread separada.
+- Comunicacao assicrona via fila evita acesso direto de thread de worker na UI.
+- Polling no loop principal garante atualizacoes thread-safe.
+
+LIVROS
+1) Python Cookbook (capitulos de threading/queue)
+2) Effective Python (itens de concorrencia)
+3) High Performance Python - Micha Gorelick, Ian Ozsvald
+
+CODIGO
+- cora_interface.py:3043 (_start_processing_job)
+- cora_interface.py:3097 (_poll_worker_queue)
+- cora_interface.py:3169 (_finish_processing_job)
+- services/processing_service.py:1040 (process_single_item)
+- services/processing_service.py:1056 (run_processing_worker)
+
+====================================================================
+SECAO 8 - I/O DE PASTAS, VALIDACAO DE ENTRADA E HIGIENE DE CAMINHOS
+====================================================================
+TEORIA
+- Dialogos nativos para selecao de diretorios.
+- Validacao defensiva para evitar estados sem dados ou caminhos invalidos.
+- Normalizacao de texto de caminho para comparacoes estaveis.
+
+LIVROS
+1) Robust Python - Patrick Viafore
+2) Effective Python - Brett Slatkin
+
+CODIGO
+- cora_interface.py:1773 (_normalize_folder_entry)
+- cora_interface.py:1797 (_browse_folder)
+- cora_interface.py:1803 (_browse_output_folder)
+- cora_interface.py:1814 (_sorted_image_paths_for_scan)
+- cora_interface.py:2508 (_scan_folder)
+
+====================================================================
+SECAO 9 - REVISAO DE AGRUPAMENTO (HUMAN-IN-THE-LOOP)
+====================================================================
+TEORIA
+- A interface combina heuristica automatica com curadoria humana.
+- Revisao interativa de grupo/tempo reduz erro sem eliminar velocidade.
+- Confirmacao antes de processar garante consistencia semantica do lote.
+
+LIVROS
+1) Human-Computer Interaction - Dix, Finlay, Abowd, Beale
+2) About Face - Alan Cooper et al.
+3) The Design of Everyday Things - Don Norman
+
+CODIGO
+- cora_interface.py:1822 (_collect_grouping_entries)
+- cora_interface.py:1916 (_review_grouping_entries: tabela e operacoes)
+- cora_interface.py:2442 (_build_groups_from_entries)
+- cora_interface.py:2485 (_append_grouping_log)
+- services/grouping_service.py:281 (parse_group_image)
+- services/grouping_service.py:341 (discover_image_groups)
+
+====================================================================
+SECAO 10 - VISUALIZACAO CIENTIFICA EMBUTIDA (MATPLOTLIB + TK)
+====================================================================
+TEORIA
+- Embedding de Figure/Canvas dentro de UI Tk para analise visual imediata.
+- Mosaico por tempo (0h/24h/48h) com anotacoes metricas.
+- Renderizacao reativa conforme alteracoes de estado da revisao.
+
+LIVROS
+1) Python Data Science Handbook - Jake VanderPlas
+2) Matplotlib for Python Developers - Sandro Tosi
+
+CODIGO
+- pages/main_page.py:6-7 (Figure + FigureCanvasTkAgg)
+- pages/main_page.py:272 (canvas embutido)
+- cora_interface.py:3917 (_refresh_figure)
+- cora_interface.py:3854 (_refresh_metrics)
+
+====================================================================
+SECAO 11 - TEORIA DE COR, LEGIBILIDADE E CONFIGURACAO DE OVERLAY
+====================================================================
+TEORIA
+- Cores de contorno como canal semantico de leitura (global ou por tempo).
+- Contraste automatico do texto sobre botoes coloridos para legibilidade.
+- Controles de cor como camada de interpretabilidade da analise.
+
+LIVROS
+1) Information Visualization - Colin Ware
+2) Fundamentals of Data Visualization - Claus O. Wilke
+3) Visual Thinking for Design - Colin Ware
+
+CODIGO
+- cora_interface.py:700 (_color_text_fg)
+- cora_interface.py:733 (_set_preview_color_mode)
+- cora_interface.py:757 (_preview_contour_color)
+- cora_interface.py:766 (_update_preview_color_buttons)
+- cora_interface.py:794 (_refresh_contour_color_controls_state)
+- cora_interface.py:849 (_choose_preview_shared_contour_color)
+- cora_interface.py:867 (_choose_preview_contour_color)
+- cora_interface.py:1187 (_open_contour_settings_popup)
+
+====================================================================
+SECAO 12 - PREVIEW DE IMAGEM E HEURISTICA DE DEFINICAO
+====================================================================
+TEORIA
+- Conversao robusta para RGB uint8.
+- Heuristica de visibilidade para selecionar representacao mais informativa.
+- Cache de preview para reduzir custo de leitura/processamento.
+
+LIVROS
+1) Learning OpenCV 4 Computer Vision with Python 3 - Joseph Howse, Joe Minichino
+2) Digital Image Processing - Gonzalez e Woods
+3) Computer Vision: Algorithms and Applications - Richard Szeliski
+
+CODIGO
+- cora_interface.py:1305 (_to_rgb_u8)
+- cora_interface.py:1320 (_visibility_score)
+- cora_interface.py:1330 (_best_defined_image)
+- cora_interface.py:1342 (_read_original_preview_image)
+- cora_interface.py:1355 (_preview_base_for_path)
+- pages/roi_page.py:36 (pipeline de realce para edicao de ROI)
+
+====================================================================
+SECAO 13 - EDITOR DE ROI INTERATIVO (FOCO EM USABILIDADE TECNICA)
+====================================================================
+TEORIA
+- Edicao direta por brush/eraser/remocao de componente.
+- Undo/redo e atalhos para produtividade.
+- Redraw em lote para manter desempenho.
+- Nesta versao: perfil de desempenho fixo em 50% e exibicao de borda somente em contorno.
+
+LIVROS
+1) Human-Computer Interaction - Dix et al.
+2) Digital Image Processing - Gonzalez e Woods
+3) Computer Vision: Algorithms and Applications - Szeliski
+
+CODIGO
+- cora_interface.py:3995 (_open_roi_editor)
+- cora_interface.py:4051 (perfil de desempenho fixado em rapido_50)
+- cora_interface.py:4283 (_refresh_contour, modo contorno)
+- cora_interface.py:4400 (painel de atalhos/ferramentas)
+- cora_interface.py:4989 (atalhos de teclado ativos)
+- cora_interface.py:5019 (binding de eventos Matplotlib)
+
+====================================================================
+SECAO 14 - GEOMETRIA E MORFOLOGIA NA CAMADA DE INTERACAO
+====================================================================
+TEORIA
+- Conversao mascara->poligono e poligono->mascara.
+- Resize de mascara com nearest-neighbor para preservar rotulos.
+- Operacoes com componente conexo e signed distance field para offset de ROI.
+
+LIVROS
+1) Digital Image Processing - Gonzalez e Woods
+2) Learning OpenCV 4 - Bradski e Kaehler
+3) Computer Vision: Algorithms and Applications - Szeliski
+
+CODIGO
+- cora_interface.py:217 (mask_to_polygon)
+- cora_interface.py:233 (polygon_to_mask)
+- cora_interface.py:247 (resize_mask)
+- cora_interface.py:255 (keep_largest_component)
+- cora_interface.py:272 (offset_mask_sdf)
+
+====================================================================
+SECAO 15 - ORQUESTRACAO UI <-> SERVICOS DE DOMINIO
+====================================================================
+TEORIA
+- UI como camada de aplicacao: coordena descoberta, processamento e persistencia.
+- Servicos isolam regras de negocio para reduzir acoplamento.
+
+LIVROS
+1) Architecture Patterns with Python - Percival e Gregory
+2) Clean Architecture - Robert C. Martin
+
+CODIGO
+- cora_interface.py:2508 (scan + discover_image_groups)
+- cora_interface.py:3043 (inicio de processamento em lote)
+- cora_interface.py:2957 (reprocessamento com ROI manual)
+- cora_interface.py:3022 (reprocessamento automatico)
+- cora_interface.py:3752 (pipeline de salvamento)
+- services/grouping_service.py:341 (discover_image_groups)
+- services/processing_service.py:1056 (run_processing_worker)
+- services/export_service.py:123 (write_results_excel)
+
+====================================================================
+SECAO 16 - EXPORTACAO, RASTREABILIDADE E REPRODUTIBILIDADE
+====================================================================
+TEORIA
+- Saida estruturada em CSV e XLSX para analise posterior e auditoria.
+- Persistencia de overlays e metadados de processamento por imagem.
+- Relacao explicita entre origem, ROI revisada e metricas finais.
+
+LIVROS
+1) Python for Data Analysis - Wes McKinney
+2) Data Wrangling with Python - Jacqueline Kazil, Katharine Jarmul
+
+CODIGO
+- cora_interface.py:3611 (_save_results_clicked)
+- cora_interface.py:3752 (_save_results_to_disk)
+- services/export_service.py:14 (safe_filename)
+- services/export_service.py:30 (write_image_file)
+- services/export_service.py:73 (excel_cell_xml)
+- services/export_service.py:90 (excel_sheet_xml)
+- services/export_service.py:123 (write_results_excel)
+
+====================================================================
+SECAO 17 - ROBUSTEZ, ERROS E ENCERRAMENTO SEGURO
+====================================================================
+TEORIA
+- Tratamento de excecao em pontos criticos de UI para manter estabilidade.
+- Fallbacks em import e leitura de imagem.
+- Encerramento defensivo com cancel_event e fechamento de figuras.
+
+LIVROS
+1) Robust Python - Patrick Viafore
+2) Effective Python - Brett Slatkin
+
+CODIGO
+- cora_interface.py:22-99 (fallbacks de import)
+- cora_interface.py:1419 (_on_close)
+- cora_interface.py:1465 (_arm_force_exit_watchdog)
+- cora_interface.py:184 (_close_all_pyplot_figures)
+- cora_interface.py:5060 (run com cleanup)
+
+====================================================================
+SECAO 18 - INSUMOS ESSENCIAIS PARA ESCRITA DE ARTIGO (INTERFACE)
+====================================================================
+PONTOS-CHAVE PARA ENFATIZAR
+1) Interface como sistema human-in-the-loop:
+   automacao inicial (agrupamento/processamento) + revisao humana guiada.
+
+2) Responsividade como requisito cientifico:
+   uso de thread/queue/polling para manter feedback continuo durante processamento.
+
+3) Governanca visual da analise:
+   overlays configuraveis, painel de metricas, log de progresso e status por etapa.
+
+4) ROI editor como contribuicao de usabilidade tecnica:
+   ferramentas diretas, atalhos, undo/redo, desempenho fixado em 50% e contorno unico.
+
+5) Rastreabilidade ponta-a-ponta:
+   resultados exportados com vinculo entre arquivo de origem, estado de revisao e metricas.
+
+ROTEIRO SUGERIDO DO ARTIGO
+PASSO 1 - Contexto e problema:
+- Necessidade de revisar lotes de imagens temporais com consistencia operacional.
+
+PASSO 2 - Arquitetura da interface:
+- Controller central (CORAApp), paginas de layout e servicos especializados.
+
+PASSO 3 - Fluxo do usuario:
+- Configuracao -> revisao de agrupamento -> processamento -> revisao de mascara -> exportacao.
+
+PASSO 4 - Decisoes de UX e desempenho:
+- Busy state, progresso, ETA, cancelamento, atalhos e editor responsivo.
+
+PASSO 5 - Confiabilidade e reproducibilidade:
+- Persistencia de preferencias, validacoes, logs, exportacao e cleanup seguro.
+
+CHECKLIST PARA TEXTO ACADEMICO
+- Delimitar claramente camada de interface vs pipeline de visao computacional.
+- Explicitar quais decisoes de UI reduzem erro humano e tempo operacional.
+- Demonstrar como a interface melhora interpretabilidade dos resultados.
+- Discutir limitacoes atuais e oportunidades futuras (ex.: telemetria de uso e testes de usabilidade).
+
+FIM DO GUIA

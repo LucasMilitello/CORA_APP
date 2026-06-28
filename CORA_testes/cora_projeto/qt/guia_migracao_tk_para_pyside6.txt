@@ -1,0 +1,242 @@
+GUIA DE TRANSICAO TKINTER -> PYSIDE6 (AREA EVAL)
+Data: 2026-05-04
+
+1) CONTEXTO RAPIDO
+- O frontend Tk atual em producao esta em:
+  - codigo_atual/cora_projeto/tk/cora_interface.py
+  - codigo_atual/cora_projeto/tk/pages/main_page.py
+  - codigo_atual/cora_projeto/tk/pages/roi_page.py
+- O frontend Qt atual esta em scaffold (estrutura pronta, sem paridade funcional):
+  - codigo_atual/cora_projeto/qt/cora_interface_qt.py
+  - codigo_atual/cora_projeto/qt/ui/main_page_qt.py
+  - codigo_atual/cora_projeto/qt/ui/roi_page_qt.py
+  - codigo_atual/cora_projeto/qt/ui/roi_editor.py
+- Reaproveitamento importante ja pronto em:
+  - codigo_atual/cora_projeto/qt/core/tk_portable_pack.py
+
+2) PRINCIPIO DE MIGRACAO
+- Nao reescrever algoritmo.
+- Migrar apenas camada de interface/orquestracao.
+- Manter backend atual:
+  - services/grouping_service.py
+  - services/processing_service.py
+  - services/export_service.py
+  - matlab_style_cora.py
+
+3) MAPEAMENTO DIRETO TK -> PYSIDE6
+
+3.1 Bootstrap e ciclo de vida
+- Tk:
+  - root = tk.Tk(), root.mainloop(), protocol("WM_DELETE_WINDOW", ...)
+- Qt:
+  - QApplication, QMainWindow, app.exec(), closeEvent(self, event)
+- Arquivo alvo:
+  - qt/cora_interface_qt.py
+
+3.2 Variaveis de estado
+- Tk:
+  - StringVar/DoubleVar/BooleanVar
+- Qt:
+  - atributos Python + atualizacao explicita de widgets
+  - sinais/slots para sincronizar UI
+- Dica:
+  - dominio em atributos; widget apenas reflete e emite eventos
+
+3.3 Layout principal (duas telas)
+- Tk:
+  - pagina configuracao + pagina visualizacao (pack_forget/pack)
+- Qt:
+  - QStackedWidget para trocar pagina
+  - QSplitter para painel lateral + canvas
+  - QTabWidget para resultados/guia/progresso
+
+3.4 Campos e botoes principais
+- Tk:
+  - Entry, Button, Combobox, Checkbutton
+- Qt:
+  - QLineEdit, QPushButton, QComboBox, QCheckBox
+- Dialogos:
+  - filedialog.askdirectory -> QFileDialog.getExistingDirectory
+  - messagebox.* -> QMessageBox.*
+  - colorchooser -> QColorDialog.getColor
+
+3.5 Revisao de agrupamento (parte critica)
+- Tk:
+  - Treeview editavel + selecao + preview + confirmar/cancelar
+- Qt recomendado:
+  - QDialog + QTableView + QAbstractTableModel
+  - coluna "Incluir" com check (Qt.CheckStateRole)
+  - delegate para tempo (0h/24h/48h)
+  - QDialogButtonBox para Confirmar/Cancelar/Iniciar processamento
+- Regras de negocio reutilizaveis:
+  - collect_grouping_entries(...)
+  - build_groups_from_entries(...)
+  em qt/core/tk_portable_pack.py
+
+3.6 Processamento em background
+- Tk:
+  - threading.Thread + queue.Queue + root.after(90, poll)
+- Qt:
+  - manter threading.Thread + queue.Queue + cancel_event
+  - trocar root.after por QTimer periodico
+- Reuso direto:
+  - services/processing_service.run_processing_worker
+
+3.7 Progresso e cancelamento
+- Tk:
+  - popup + barra + ETA + botao cancelar
+- Qt:
+  - QDialog modeless custom (ou QProgressDialog)
+  - QProgressBar + QLabel
+  - botao cancelar -> setar cancel_event
+
+3.8 Viewer de resultados e metricas
+- Tk:
+  - Text + FigureCanvasTkAgg
+- Qt:
+  - QPlainTextEdit (read-only)
+  - FigureCanvasQTAgg para matplotlib
+- Preview e metricas por grupo:
+  - reaproveitar logica de montagem de texto e overlays
+
+3.9 Configuracao de contornos
+- Tk:
+  - popup com modo contour/filled, modo cor shared/per_time
+- Qt:
+  - QDialog com QComboBox + botoes de cor (QColorDialog)
+  - atualizar estilos (background-color) e refresh da figura
+
+3.10 Editor ROI avancado
+- Tk:
+  - _open_roi_editor com Matplotlib + atalhos + brush/eraser/undo/redo
+- Qt:
+  - manter Matplotlib, embutir em QDialog com FigureCanvasQTAgg
+  - reaproveitar helpers de mascara de qt/core:
+    - mask_to_polygon
+    - polygon_to_mask
+    - resize_mask
+    - offset_mask_sdf
+    - keep_largest_component
+- Arquivo alvo:
+  - qt/ui/roi_editor.py
+
+3.11 Exportacao
+- Tk:
+  - _save_results_to_disk + export_service
+- Qt:
+  - manter export_service
+  - mesma regra de status e avisos no fim do fluxo
+
+3.12 Persistencia de preferencias
+- Tk:
+  - JSON manual em LOCALAPPDATA
+- Qt recomendado:
+  - QSettings (nativo por plataforma)
+
+3.13 Fechamento robusto
+- Tk:
+  - confirma fechamento se processando, cancela thread, fecha popup
+- Qt:
+  - closeEvent + QMessageBox.question
+  - parar QTimer de polling
+  - cancelar processamento
+  - fechar dialogs/canvas
+
+4) ONDE JA REAPROVEITAR AGORA (SEM REESCREVER)
+- qt/core/tk_portable_pack.py:
+  - constantes: TIME_ORDER, OUTPUT_DIR_NAME, presets ROI/preview
+  - tipos: GroupingEntry, ProcessedTimepoint
+  - agrupamento: collect_grouping_entries, build_groups_from_entries, all_items
+  - metricas: area_auto_from_processed, closure_vs_0h
+  - mascara/geometria: mask_to_polygon, polygon_to_mask, resize_mask, offset_mask_sdf, keep_largest_component
+
+5) SEQUENCIA PRATICA DE IMPLEMENTACAO (RECOMENDADA)
+1. Implementar scan + revisao de grupos no Qt (QDialog+QTableView).
+2. Ligar processamento (thread+queue+QTimer polling).
+3. Portar viewer (metricas + FigureCanvasQTAgg).
+4. Portar popup de progresso/cancelamento.
+5. Portar editor ROI completo.
+6. Ligar exportacao final e ajustes de fechamento.
+
+6) REFERENCIAS OFICIAIS (DOCUMENTACAO)
+
+6.1 Hub principal Qt for Python
+- https://doc.qt.io/qtforpython-6/
+- https://doc.qt.io/qtforpython-6.5/index.html
+
+6.2 Tutoriais e exemplos oficiais
+- Tutoriais (inicio rapido):
+  - https://doc.qt.io/qtforpython-6.5/tutorials/index.html
+- Exemplos de Widgets:
+  - https://doc.qt.io/qtforpython-6.5/overviews/examples-widgets.html
+- Exemplos de dialogos:
+  - https://doc.qt.io/qtforpython-6.5/overviews/examples-dialogs.html
+- Example "Standard Dialogs" (QFileDialog/QMessageBox/QColorDialog):
+  - https://doc.qt.io/qtforpython-6.8/examples/example_widgets_dialogs_standarddialogs.html
+- Tutorial de Model/View:
+  - https://doc.qt.io/qtforpython-6/overviews/qtwidgets-modelview.html
+- Codigo do tutorial de Model/View:
+  - https://doc.qt.io/qtforpython-6.9/examples/example_widgets_tutorials_modelview.html
+
+6.3 APIs PySide6 mais importantes para esta migracao
+- Signals e Slots:
+  - https://doc.qt.io/qtforpython-6/tutorials/basictutorial/signals_and_slots.html
+  - https://doc.qt.io/qtforpython-6.10/PySide6/QtCore/Signal.html
+  - https://doc.qt.io/qtforpython-6.10/PySide6/QtCore/Slot.html
+- QTimer (polling de fila/progresso):
+  - https://doc.qt.io/qtforpython-6.8/PySide6/QtCore/QTimer.html
+- QThread (caso opte por modelo Qt puro de thread):
+  - https://doc.qt.io/qtforpython-6.9/PySide6/QtCore/QThread.html
+- QTableView e QAbstractTableModel:
+  - https://doc.qt.io/qtforpython-6.5/PySide6/QtWidgets/QTableView.html
+  - https://doc.qt.io/qtforpython-6/PySide6/QtCore/QAbstractTableModel.html
+- QStackedWidget (troca de telas):
+  - https://doc.qt.io/qtforpython-6.5/PySide6/QtWidgets/QStackedWidget.html
+- QDialogButtonBox:
+  - https://doc.qt.io/qtforpython-6.5/PySide6/QtWidgets/QDialogButtonBox.html
+- QProgressDialog:
+  - https://doc.qt.io/qtforpython-6/PySide6/QtWidgets/QProgressDialog.html
+- QColorDialog:
+  - https://doc.qt.io/qtforpython-6.5/PySide6/QtWidgets/QColorDialog.html
+- QSettings:
+  - https://doc.qt.io/qtforpython-6/PySide6/QtCore/QSettings.html
+
+6.4 Matplotlib embutido no Qt (base para viewer/ROI)
+- Embedding in Qt (example):
+  - https://matplotlib.org/3.6.3/gallery/user_interfaces/embedding_in_qt_sgskip.html
+
+6.5 Threading/Queue em Python (para manter modelo atual com seguranca)
+- queue:
+  - https://docs.python.org/3/library/queue.html
+- threading:
+  - https://docs.python.org/3/library/threading.html
+
+7) VIDEOS OFICIAIS/RECOMENDADOS
+
+7.1 Pagina oficial de videos Qt for Python (melhor ponto unico)
+- https://doc.qt.io/qtforpython-6.10/videos.html
+
+7.2 Videos especificos uteis
+- Getting started with Qt for Python (Qt Group):
+  - https://www.youtube.com/watch?v=2_ycYloRgo4
+- Qt for Python; an introduction (Qt Group):
+  - https://www.youtube.com/watch?v=214TWASZVgA
+- Qt for Python: Resources overview (pagina oficial Qt):
+  - https://www.qt.io/resources/videos/qt-for-python-resources-overview
+
+8) REPOSITORIOS COM EXEMPLOS
+- Repositorio oficial Qt for Python (inclui pasta examples):
+  - https://github.com/qtproject/pyside-pyside-setup
+
+9) CHECKLIST DE PARIDADE FUNCIONAL (TK -> QT)
+[ ] Selecionar pasta entrada/saida
+[ ] Escanear e revisar agrupamento
+[ ] Confirmar agrupamento e montar group_files
+[ ] Processar com progresso/cancelamento
+[ ] Navegar grupos e marcar incluir/sem area
+[ ] Reprocessar itens pendentes
+[ ] Editar ROI em fila
+[ ] Salvar resultados (CSV/XLSX/overlays)
+[ ] Fechar app sem thread presa
+
+FIM
